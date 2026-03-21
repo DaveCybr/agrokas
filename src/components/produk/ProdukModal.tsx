@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { useCategories, useTambahProduk, useUpdateProduk } from '@/hooks/useProducts'
 import { useToastStore } from '@/store/toastStore'
 import type { Product } from '@/types'
-
-const SATUAN_OPTIONS = ['kg', 'liter', 'sachet', 'botol', 'karung', 'pcs', 'lusin', 'ikat']
+import { SATUAN_OPTIONS } from '@/lib/constants'
 
 interface FormState {
   nama: string
@@ -137,8 +136,8 @@ export function ProdukModal({ product, onClose }: Props) {
   function validate(): boolean {
     const errs: Partial<Record<keyof FormState, string>> = {}
     if (!form.nama.trim()) errs.nama = 'Wajib diisi'
-    if (!form.category_id) errs.category_id = 'Wajib dipilih'
     if (!form.satuan) errs.satuan = 'Wajib dipilih'
+    if (form.harga_beli > 0 && form.harga_jual < form.harga_beli) errs.harga_jual = 'Harga jual tidak boleh lebih kecil dari harga beli'
     if (form.harga_jual <= 0) errs.harga_jual = 'Harus > 0'
     if (form.harga_grosir && Number(form.harga_grosir) >= form.harga_jual)
       errs.harga_grosir = 'Harus lebih kecil dari harga jual'
@@ -236,7 +235,7 @@ export function ProdukModal({ product, onClose }: Props) {
           {/* Kategori + Satuan */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Kategori *</Label>
+              <Label>Kategori</Label>
               <select
                 className={inputCls('category_id')}
                 value={form.category_id}
@@ -262,9 +261,13 @@ export function ProdukModal({ product, onClose }: Props) {
                 onChange={(e) => set('satuan', e.target.value)}
                 style={{ height: '36px' }}
               >
+                <option value="">-- Pilih --</option>
                 {SATUAN_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
+                {form.satuan && !SATUAN_OPTIONS.includes(form.satuan) && (
+                  <option value={form.satuan}>{form.satuan}</option>
+                )}
               </select>
               {errors.satuan && (
                 <p className="text-xs text-red-500 mt-1">{errors.satuan}</p>

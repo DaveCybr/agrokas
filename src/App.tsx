@@ -10,6 +10,7 @@ import { ProdukPage } from '@/pages/ProdukPage'
 import { PelangganPage } from '@/pages/PelangganPage'
 import { LaporanPage } from '@/pages/LaporanPage'
 import { PengaturanPage } from '@/pages/PengaturanPage'
+import { SupplierPage } from '@/pages/SupplierPage'
 import { Spinner } from '@/components/ui/Spinner'
 
 const qc = new QueryClient({
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="/produk"     element={<ProdukPage />} />
               <Route path="/pelanggan"  element={<PelangganPage />} />
               <Route path="/laporan"    element={<LaporanPage />} />
+              <Route path="/supplier"   element={<SupplierPage />} />
               <Route path="/pengaturan" element={<PengaturanPage />} />
             </Route>
           </Routes>

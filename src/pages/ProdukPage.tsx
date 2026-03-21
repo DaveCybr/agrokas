@@ -448,7 +448,11 @@ export function ProdukPage() {
 
                     {/* Kategori */}
                     <td className="px-4 py-2 text-xs" style={{ color: '#6B6963' }}>
-                      {p.categories?.nama ?? '—'}
+                      {p.categories?.nama ?? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                          Tanpa Kategori
+                        </span>
+                      )}
                     </td>
 
                     {/* Satuan */}

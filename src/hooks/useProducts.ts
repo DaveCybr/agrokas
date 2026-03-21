@@ -113,6 +113,7 @@ export function useProductsPaginated(params: ProductsPageParams) {
       if (stokFilter === 'habis') q = q.eq('stok', 0)
 
       // Range hanya untuk non-kritis; kritis fetch all lalu potong client-side
+      // (PostgREST tidak support column-to-column comparison via JS client)
       if (!isKritis) q = q.range(from, to)
 
       const { data: raw, count: rawCount, error } = await q
@@ -122,9 +123,9 @@ export function useProductsPaginated(params: ProductsPageParams) {
       let total = rawCount ?? 0
 
       if (isKritis) {
-        data  = data.filter((p) => p.stok > 0 && p.stok <= p.stok_minimum)
-        total = data.length
-        data  = data.slice(from, to + 1)
+        const filtered = data.filter((p) => p.stok > 0 && p.stok <= p.stok_minimum)
+        total = filtered.length
+        data  = filtered.slice(from, to + 1)
       }
 
       return { data, total }
@@ -167,6 +168,31 @@ export function useUpdateProduk() {
     mutationFn: async ({ id, ...data }: Partial<ProductInput> & { id: string }) => {
       const { error } = await supabase.from('products').update(data).eq('id', id)
       if (error) throw error
+    },
+    onSuccess: () => invalidateProductQueries(qc),
+  })
+}
+
+/** Buat produk baru dengan data minimal — dipakai saat terima barang produk baru */
+export function useTambahProdukCepat() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: { nama: string; satuan: string; harga_beli: number }) => {
+      const { data: result, error } = await supabase
+        .from('products')
+        .insert({
+          nama: data.nama,
+          satuan: data.satuan,
+          harga_beli: data.harga_beli,
+          harga_jual: data.harga_beli,
+          stok: 0,
+          stok_minimum: 0,
+          aktif: true,
+        })
+        .select()
+        .single()
+      if (error) throw error
+      return result as Product
     },
     onSuccess: () => invalidateProductQueries(qc),
   })

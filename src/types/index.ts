@@ -123,3 +123,70 @@ export interface DateRange {
   from: Date
   to: Date
 }
+
+export interface Supplier {
+  id: string
+  nama: string
+  kontak: string | null
+  telp: string | null
+  alamat: string | null
+  kota: string | null
+  produk_supply: string | null
+  saldo_hutang: number
+  aktif: boolean
+  created_at: string
+}
+
+export type POStatus = 'draft' | 'dikirim' | 'sebagian' | 'selesai' | 'batal'
+
+export interface PurchaseOrder {
+  id: string
+  no_po: string
+  supplier_id: string
+  status: POStatus
+  total_po: number
+  catatan: string | null
+  tanggal_po: string
+  tanggal_kirim: string | null
+  created_at: string
+  suppliers?: Supplier
+  purchase_order_items?: POItem[]
+}
+
+export interface POItem {
+  id: string
+  po_id: string
+  product_id: string | null
+  nama_produk: string
+  satuan: string
+  qty_pesan: number
+  qty_diterima: number
+  harga_beli: number
+  subtotal: number
+}
+
+export interface GoodsReceipt {
+  id: string
+  no_terima: string
+  po_id: string | null
+  supplier_id: string
+  tanggal: string
+  total: number
+  metode_bayar: 'Tunai' | 'Transfer' | 'Hutang'
+  catatan: string | null
+  created_at: string
+  suppliers?: Supplier
+  goods_receipt_items?: GRItem[]
+}
+
+export interface GRItem {
+  id: string
+  gr_id: string
+  product_id: string | null
+  po_item_id: string | null
+  nama_produk: string
+  satuan: string
+  qty_diterima: number
+  harga_beli: number
+  subtotal: number
+}
