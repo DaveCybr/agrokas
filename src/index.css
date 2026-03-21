@@ -2,35 +2,131 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg-page:    #F8F8F6;
+  --color-bg-card:    #FFFFFF;
+  --color-border:     #E8E6E0;
+  --color-border-h:   #D0CEC8;
+  --color-text-1:     #1A1A18;
+  --color-text-2:     #6B6963;
+  --color-text-3:     #9B9890;
+  --color-primary:    #3B6D11;
+  --color-primary-bg: #EAF3DE;
+  --color-danger:     #DC2626;
+  --color-warning:    #D97706;
+  --color-success:    #059669;
+}
+
 @layer base {
   * { box-sizing: border-box; }
+
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--color-bg-page);
+    color: var(--color-text-1);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded; }
-  ::-webkit-scrollbar-track { @apply bg-transparent; }
+
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-thumb { background: #D0CEC8; border-radius: 2px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  *                          { scrollbar-width: thin; scrollbar-color: #D0CEC8 transparent; }
 }
 
 @layer components {
+  /* ── Cards ─────────────────────────────────────── */
+  .card {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+  }
+
+  .card-hover {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    transition: border-color 150ms ease;
+  }
+  .card-hover:hover { border-color: var(--color-border-h); }
+
+  /* ── Buttons ────────────────────────────────────── */
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-800 active:scale-[0.99] text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 font-medium text-white rounded-lg
+           transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99];
+    height: 36px;
+    padding: 0 16px;
+    background-color: var(--color-primary);
+    font-size: 0.875rem;
   }
+  .btn-primary:hover:not(:disabled) { background-color: #305C0E; }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg
+           transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+    height: 36px;
+    padding: 0 16px;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-2);
+    font-size: 0.875rem;
+  }
+  .btn-ghost:hover:not(:disabled) { background-color: var(--color-bg-page); }
+
+  /* Keep btn-outline as alias for backwards compat */
   .btn-outline {
-    @apply border border-gray-200 hover:bg-gray-50 active:scale-[0.99] text-gray-600 font-medium py-2.5 px-4 rounded-lg transition-all duration-150;
+    @apply btn-ghost;
   }
+
   .btn-danger {
-    @apply bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-150;
+    @apply inline-flex items-center justify-center gap-2 font-medium text-white rounded-lg
+           transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99];
+    height: 36px;
+    padding: 0 16px;
+    background-color: var(--color-danger);
+    font-size: 0.875rem;
   }
-  .card { @apply bg-white border border-gray-100 rounded-xl shadow-sm; }
+  .btn-danger:hover:not(:disabled) { background-color: #b91c1c; }
+
+  /* ── Input ──────────────────────────────────────── */
   .input {
-    @apply w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400 transition-all;
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: var(--color-text-1);
+    background: white;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    outline: none;
   }
-  .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
-  .badge-green  { @apply badge bg-primary-50 text-primary-800; }
-  .badge-red    { @apply badge bg-red-50 text-red-700; }
-  .badge-amber  { @apply badge bg-amber-50 text-amber-700; }
-  .badge-blue   { @apply badge bg-blue-50 text-blue-700; }
-  .badge-gray   { @apply badge bg-gray-100 text-gray-600; }
+  .input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 109, 17, 0.08);
+  }
+  .input::placeholder { color: var(--color-text-3); }
+
+  /* ── Badges ─────────────────────────────────────── */
+  .badge       { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+  .badge-green { @apply badge; background-color: #EAF3DE; color: #3B6D11; }
+  .badge-red   { @apply badge; background-color: #FEF2F2; color: #DC2626; }
+  .badge-amber { @apply badge; background-color: #FFFBEB; color: #D97706; }
+  .badge-blue  { @apply badge; background-color: #EFF6FF; color: #2563EB; }
+  .badge-gray  { @apply badge; background-color: #F3F4F6; color: #6B7280; }
+
+  /* ── Table row ──────────────────────────────────── */
+  .table-row { transition: background-color 150ms ease; }
+  .table-row:hover { background-color: #F8F8F6; }
+
+  /* ── Metric card ────────────────────────────────── */
+  .metric-card {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
 }

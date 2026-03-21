@@ -1,52 +1,160 @@
+import { useState } from 'react'
 import { useSettings } from '@/hooks/useSettings'
 import { Spinner } from '@/components/ui/Spinner'
 
+function BarcodeIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+      strokeWidth="1.5" stroke="currentColor" width="16" height="16">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5
+           c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5Z
+           M3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5
+           c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5Z
+           M13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5
+           c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+    </svg>
+  )
+}
+
 export function PengaturanPage() {
   const { data: settings, isLoading } = useSettings()
+  const [barcodeEnabled, setBarcodeEnabled] = useState(
+    () => localStorage.getItem('agrokas_barcode_enabled') !== 'false'
+  )
 
-  if (isLoading) return <div className="flex justify-center py-20"><Spinner /></div>
+  function toggleBarcode() {
+    const next = !barcodeEnabled
+    setBarcodeEnabled(next)
+    localStorage.setItem('agrokas_barcode_enabled', String(next))
+  }
+
+  if (isLoading) {
+    return <div className="flex justify-center py-20"><Spinner /></div>
+  }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-xl font-semibold mb-6">Pengaturan</h1>
+    <div className="px-8 py-6" style={{ maxWidth: '672px' }}>
+      <div className="mb-6">
+        <h1 className="text-lg font-semibold" style={{ color: '#1A1A18' }}>Pengaturan</h1>
+        <p className="text-xs mt-0.5" style={{ color: '#9B9890' }}>Konfigurasi toko & printer</p>
+      </div>
 
-      <div className="card p-5 mb-4">
-        <h2 className="font-medium mb-4 text-sm text-gray-700">Informasi Toko</h2>
-        <div className="space-y-3">
+      {/* Informasi Toko */}
+      <div className="card p-6 mb-4">
+        <div className="pb-3 mb-4" style={{ borderBottom: '1px solid #E8E6E0' }}>
+          <h2 className="font-semibold text-sm" style={{ color: '#1A1A18' }}>Informasi Toko</h2>
+        </div>
+        <div className="space-y-4">
           {[
-            { label: 'Nama Toko', value: settings?.nama_toko },
-            { label: 'Alamat', value: settings?.alamat },
-            { label: 'Nomor Telepon', value: settings?.telp },
-            { label: 'Footer Nota', value: settings?.footer_nota },
+            { label: 'Nama Toko', key: 'nama_toko', value: settings?.nama_toko },
+            { label: 'Alamat', key: 'alamat', value: settings?.alamat },
+            { label: 'Nomor Telepon', key: 'telp', value: settings?.telp },
+            { label: 'Footer Nota', key: 'footer_nota', value: settings?.footer_nota },
           ].map((f) => (
-            <div key={f.label}>
-              <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
+            <div key={f.key}>
+              <label
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: '#6B6963' }}
+              >
+                {f.label}
+              </label>
               <input className="input" defaultValue={f.value ?? ''} />
             </div>
           ))}
-          <button className="btn-primary text-sm">Simpan Perubahan</button>
+          <div className="pt-1">
+            <button className="btn-primary text-sm">Simpan Perubahan</button>
+          </div>
         </div>
       </div>
 
-      <div className="card p-5">
-        <h2 className="font-medium mb-4 text-sm text-gray-700">Konfigurasi Printer</h2>
-        <div className="space-y-3">
+      {/* Barcode Scanner */}
+      <div className="card p-6 mb-4">
+        <div className="pb-3 mb-4 flex items-center gap-2" style={{ borderBottom: '1px solid #E8E6E0' }}>
+          <span style={{ color: '#3B6D11' }}><BarcodeIcon /></span>
+          <h2 className="font-semibold text-sm" style={{ color: '#1A1A18' }}>Barcode Scanner</h2>
+        </div>
+        <div className="space-y-4">
+          {/* Toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium" style={{ color: '#1A1A18' }}>
+                Aktifkan scan barcode otomatis
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: '#9B9890' }}>
+                Scan produk langsung dari halaman kasir
+              </p>
+            </div>
+            <div
+              className="relative rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer"
+              style={{ width: '36px', height: '20px', backgroundColor: barcodeEnabled ? '#3B6D11' : '#D0CEC8' }}
+              onClick={toggleBarcode}
+            >
+              <div
+                className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200"
+                style={{ transform: barcodeEnabled ? 'translateX(18px)' : 'translateX(2px)' }}
+              />
+            </div>
+          </div>
+
+          {/* Info box */}
+          <div
+            className="p-3 rounded-lg text-xs space-y-1"
+            style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}
+          >
+            <p>Scanner USB bekerja otomatis tanpa konfigurasi tambahan.</p>
+            <p>Pastikan scanner disetel ke mode <strong>HID Keyboard</strong> (default pabrik).</p>
+            <p>Kode produk harus diisi di master produk agar bisa di-scan.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Konfigurasi Printer */}
+      <div className="card p-6">
+        <div className="pb-3 mb-4" style={{ borderBottom: '1px solid #E8E6E0' }}>
+          <h2 className="font-semibold text-sm" style={{ color: '#1A1A18' }}>Konfigurasi Printer</h2>
+        </div>
+        <div className="space-y-4">
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Nama Printer (QZ Tray)</label>
-            <input className="input" defaultValue={settings?.printer_name ?? ''} placeholder="Kosongkan untuk default printer" />
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B6963' }}>
+              Nama Printer (QZ Tray)
+            </label>
+            <input
+              className="input"
+              defaultValue={settings?.printer_name ?? ''}
+              placeholder="Kosongkan untuk default printer"
+            />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Lebar Kertas</label>
-            <select className="input">
-              <option value={58} selected={settings?.paper_width === 58}>58mm</option>
-              <option value={80} selected={settings?.paper_width === 80}>80mm</option>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B6963' }}>
+              Lebar Kertas
+            </label>
+            <select className="input" defaultValue={settings?.paper_width ?? 80}>
+              <option value={58}>58mm</option>
+              <option value={80}>80mm</option>
             </select>
           </div>
-          <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700">
-            Pastikan <strong>QZ Tray</strong> sudah terinstall dan berjalan di komputer kasir.
-            Download di <a href="https://qz.io/download" target="_blank" className="underline">qz.io/download</a>
+          <div
+            className="p-3 rounded-lg text-xs"
+            style={{
+              backgroundColor: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              color: '#92400E',
+            }}
+          >
+            Pastikan <strong>QZ Tray</strong> sudah terinstall dan berjalan di komputer kasir.{' '}
+            <a
+              href="https://qz.io/download"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              qz.io/download
+            </a>
           </div>
-          <button className="btn-primary text-sm">Simpan & Test Print</button>
+          <div className="pt-1">
+            <button className="btn-primary text-sm">Simpan & Test Print</button>
+          </div>
         </div>
       </div>
     </div>

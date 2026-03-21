@@ -45,6 +45,18 @@ export interface CartItem {
   harga_jual: number
 }
 
+export interface HeldTransaction {
+  id: string
+  label: string
+  items: CartItem[]
+  customer: Customer | null
+  diskonPersen: number
+  metodeBayar: MetodeBayar
+  heldAt: Date
+  subtotal: number
+  total: number
+}
+
 export type MetodeBayar = 'Tunai' | 'Transfer' | 'QRIS' | 'DP' | 'Hutang'
 export type StatusTransaksi = 'selesai' | 'ditahan' | 'batal'
 
@@ -96,4 +108,18 @@ export interface DailySummary {
   omzet: number
   total_diskon: number
   laba_kotor: number
+}
+
+export interface TopProduct {
+  id: string
+  nama: string
+  satuan: string
+  kategori: string
+  total_qty_terjual: number
+  total_omzet: number
+}
+
+export interface DateRange {
+  from: Date
+  to: Date
 }
