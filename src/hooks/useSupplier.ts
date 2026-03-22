@@ -12,6 +12,20 @@ export function useSuppliers(search?: string) {
       if (error) throw error
       return data
     },
+    staleTime: 30_000,
+  })
+}
+
+/** Semua supplier termasuk nonaktif — dipakai di tab Hutang agar hutang tidak hilang saat supplier dinonaktifkan */
+export function useAllSuppliers() {
+  return useQuery<Supplier[]>({
+    queryKey: ['suppliers-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('suppliers').select('*').order('nama')
+      if (error) throw error
+      return data
+    },
+    staleTime: 30_000,
   })
 }
 
@@ -28,6 +42,7 @@ export function usePurchaseOrders(status?: string) {
       if (error) throw error
       return data as PurchaseOrder[]
     },
+    staleTime: 30_000,
   })
 }
 
@@ -42,6 +57,7 @@ export function useGoodsReceipts() {
       if (error) throw error
       return data as GoodsReceipt[]
     },
+    staleTime: 30_000,
   })
 }
 
@@ -54,7 +70,10 @@ export function useTambahSupplier() {
       if (error) throw error
       return result
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['suppliers'] })
+      qc.invalidateQueries({ queryKey: ['suppliers-all'] })
+    },
   })
 }
 
@@ -65,7 +84,10 @@ export function useUpdateSupplier() {
       const { error } = await supabase.from('suppliers').update(data).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['suppliers'] })
+      qc.invalidateQueries({ queryKey: ['suppliers-all'] })
+    },
   })
 }
 
@@ -88,8 +110,14 @@ export function useBuatPO() {
 
       const { error: itemErr } = await supabase
         .from('purchase_order_items')
-        .insert(items.map(i => ({ ...i, po_id: poData.id })))
-      if (itemErr) throw itemErr
+        .insert(items.map(i => ({ ...i, po_id: poData.id, subtotal: i.qty_pesan * i.harga_beli })))
+      if (itemErr) {
+        // Hapus PO header yang sudah tersimpan agar tidak jadi data orphan
+        await supabase.from('purchase_orders').delete().eq('id', poData.id)
+        throw itemErr
+      }
+
+      // total_po dihitung otomatis oleh trigger trg_po_total_insert
 
       return poData
     },
@@ -127,14 +155,18 @@ export function useTerimaBarang() {
 
       const { error: itemErr } = await supabase
         .from('goods_receipt_items')
-        .insert(items.map(i => ({ ...i, gr_id: grData.id })))
-      if (itemErr) throw itemErr
+        .insert(items.map(i => ({ ...i, gr_id: grData.id, subtotal: i.qty_diterima * i.harga_beli })))
+      if (itemErr) {
+        // Hapus GR header yang sudah tersimpan agar tidak jadi data orphan
+        await supabase.from('goods_receipts').delete().eq('id', grData.id)
+        throw itemErr
+      }
 
-      // Update total (triggers handle stok + HPP + saldo_hutang)
+      // Update total GR
       const total = items.reduce((s, i) => s + i.qty_diterima * i.harga_beli, 0)
       await supabase.from('goods_receipts').update({ total }).eq('id', grData.id)
 
-      // If hutang, update supplier saldo manually (in case trigger isn't set up for GR insert yet)
+      // Jika hutang, update saldo_hutang supplier secara manual
       if (gr.metode_bayar === 'Hutang') {
         const { data: sup } = await supabase.from('suppliers').select('saldo_hutang').eq('id', gr.supplier_id).single()
         if (sup) {
@@ -143,6 +175,7 @@ export function useTerimaBarang() {
       }
 
       // Auto-update status PO berdasarkan qty diterima vs qty pesan
+      // (qty_diterima di purchase_order_items sudah diupdate oleh trigger DB)
       if (gr.po_id) {
         const { data: poItems } = await supabase
           .from('purchase_order_items')
@@ -163,7 +196,11 @@ export function useTerimaBarang() {
       qc.invalidateQueries({ queryKey: ['goods-receipts'] })
       qc.invalidateQueries({ queryKey: ['purchase-orders'] })
       qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['products-all'] })
+      qc.invalidateQueries({ queryKey: ['products-paginated'] })
+      qc.invalidateQueries({ queryKey: ['low-stock'] })
       qc.invalidateQueries({ queryKey: ['suppliers'] })
+      qc.invalidateQueries({ queryKey: ['suppliers-all'] })
     },
   })
 }
@@ -180,8 +217,14 @@ export function useBayarHutangSupplier() {
     }) => {
       const { error } = await supabase.from('supplier_payments').insert(data)
       if (error) throw error
+      // saldo_hutang dikurangi otomatis oleh trigger trg_after_supplier_payment
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['suppliers'] })
+      qc.invalidateQueries({ queryKey: ['suppliers-all'] })
+      qc.invalidateQueries({ queryKey: ['supplier-payments', variables.supplier_id] })
+      qc.invalidateQueries({ queryKey: ['supplier-receipts', variables.supplier_id] })
+    },
   })
 }
 
@@ -198,6 +241,7 @@ export function useSupplierPayments(supplierId: string) {
       return data
     },
     enabled: !!supplierId,
+    staleTime: 30_000,
   })
 }
 
@@ -214,5 +258,6 @@ export function useSupplierReceipts(supplierId: string) {
       return data
     },
     enabled: !!supplierId,
+    staleTime: 30_000,
   })
 }

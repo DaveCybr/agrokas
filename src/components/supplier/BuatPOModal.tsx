@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useBuatPO } from '@/hooks/useSupplier'
 import { useSuppliers } from '@/hooks/useSupplier'
 import { useProducts, useTambahProdukCepat } from '@/hooks/useProducts'
+import { useDebounce } from '@/hooks/useDebounce'
 import type { Product } from '@/types'
 import { formatRupiah } from '@/lib/utils'
 import { SATUAN_OPTIONS } from '@/lib/constants'
+import { RupiahInput, QtyInput } from '@/components/ui/inputs'
 
 interface POItemRow {
   product_id: string
@@ -23,8 +25,10 @@ export function BuatPOModal({ onClose }: Props) {
   const tambahProdukCepat = useTambahProdukCepat()
   const { data: suppliers } = useSuppliers()
   const [productSearch, setProductSearch] = useState('')
-  const { data: products } = useProducts(undefined, productSearch)
+  const debouncedSearch = useDebounce(productSearch, 300)
+  const { data: products } = useProducts(undefined, debouncedSearch)
 
+  const today = new Date().toISOString().slice(0, 10)
   const [step, setStep] = useState<1 | 2>(1)
   const [supplierId, setSupplierId] = useState('')
   const [tanggalKirim, setTanggalKirim] = useState('')
@@ -33,7 +37,7 @@ export function BuatPOModal({ onClose }: Props) {
   const [error, setError] = useState('')
   const [showProductPicker, setShowProductPicker] = useState<number | null>(null)
   // State untuk form produk baru inline
-  const [newProdForm, setNewProdForm] = useState<{ idx: number; nama: string; satuan: string } | null>(null)
+  const [newProdForm, setNewProdForm] = useState<{ idx: number; nama: string; satuan: string; hargaBeli: number } | null>(null)
 
   const total = items.reduce((s, i) => s + i.qty_pesan * i.harga_beli, 0)
 
@@ -65,11 +69,10 @@ export function BuatPOModal({ onClose }: Props) {
   async function handleTambahProdukBaru() {
     if (!newProdForm || !newProdForm.satuan.trim()) return
     try {
-      const hargaBeli = items[newProdForm.idx]?.harga_beli ?? 0
       const prod = await tambahProdukCepat.mutateAsync({
         nama: newProdForm.nama,
         satuan: newProdForm.satuan.trim(),
-        harga_beli: hargaBeli,
+        harga_beli: newProdForm.hargaBeli,
       })
       selectProduct(newProdForm.idx, prod)
     } catch (err) {
@@ -128,6 +131,7 @@ export function BuatPOModal({ onClose }: Props) {
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: '#6B6963' }}>Estimasi Tanggal Kirim</label>
                 <input type="date" value={tanggalKirim} onChange={e => setTanggalKirim(e.target.value)}
+                  min={today}
                   className="w-full px-3 py-2 text-sm rounded-lg border outline-none" style={{ borderColor: '#D5D3CD', color: '#1A1A18' }} />
               </div>
               <div>
@@ -170,8 +174,10 @@ export function BuatPOModal({ onClose }: Props) {
                         {item.nama_produk || 'Pilih produk...'}
                       </button>
                       {showProductPicker === idx && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg z-10 overflow-hidden"
-                          style={{ border: '1px solid #E5E0D5' }}>
+                        <>
+                        <div className="fixed inset-0" style={{ zIndex: 9 }} onClick={() => { setShowProductPicker(null); setNewProdForm(null) }} />
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg overflow-hidden"
+                          style={{ border: '1px solid #E5E0D5', zIndex: 10 }}>
                           <div className="p-2 border-b" style={{ borderColor: '#E8E6E0' }}>
                             <input autoFocus value={productSearch} onChange={e => { setProductSearch(e.target.value); setNewProdForm(null) }}
                               placeholder="Cari produk..." className="w-full px-2 py-1 text-xs outline-none" style={{ color: '#1A1A18' }} />
@@ -201,6 +207,13 @@ export function BuatPOModal({ onClose }: Props) {
                                     <option value="">-- Pilih satuan --</option>
                                     {SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                   </select>
+                                  <div>
+                                    <p className="text-xs mb-1" style={{ color: '#9B9890' }}>Harga Beli (HPP)</p>
+                                    <RupiahInput
+                                      value={newProdForm.hargaBeli}
+                                      onChange={v => setNewProdForm(f => f ? { ...f, hargaBeli: v } : f)}
+                                    />
+                                  </div>
                                   <div className="flex gap-1.5">
                                     <button onClick={() => setNewProdForm(null)}
                                       className="flex-1 py-1 text-xs rounded-lg" style={{ backgroundColor: '#F0EEE8', color: '#6B6963' }}>
@@ -213,7 +226,7 @@ export function BuatPOModal({ onClose }: Props) {
                                   </div>
                                 </div>
                               ) : (
-                                <button onClick={() => setNewProdForm({ idx, nama: productSearch.trim(), satuan: '' })}
+                                <button onClick={() => setNewProdForm({ idx, nama: productSearch.trim(), satuan: '', hargaBeli: 0 })}
                                   className="w-full text-left px-3 py-2.5 text-xs font-medium border-t"
                                   style={{ borderColor: '#E8E6E0', color: '#3B6D11', backgroundColor: '#F0F7E8' }}>
                                   + Tambah "{productSearch.trim()}" sebagai produk baru
@@ -222,6 +235,7 @@ export function BuatPOModal({ onClose }: Props) {
                             )}
                           </div>
                         </div>
+                        </>
                       )}
                     </div>
 
@@ -238,17 +252,19 @@ export function BuatPOModal({ onClose }: Props) {
                       </div>
                       <div>
                         <label className="text-xs mb-1 block" style={{ color: '#9B9890' }}>Qty Pesan</label>
-                        <input type="number" min="1" value={item.qty_pesan}
-                          onChange={e => updateItem(idx, 'qty_pesan', Math.max(1, Number(e.target.value)))}
-                          className="w-full px-2 py-1.5 text-xs rounded-lg border outline-none"
-                          style={{ borderColor: '#D5D3CD', color: '#1A1A18', backgroundColor: '#fff' }} />
+                        <QtyInput
+                          value={item.qty_pesan}
+                          onChange={v => updateItem(idx, 'qty_pesan', Math.max(1, v))}
+                          min={1}
+                          step={1}
+                        />
                       </div>
                       <div>
                         <label className="text-xs mb-1 block" style={{ color: '#9B9890' }}>Harga Beli</label>
-                        <input type="number" min="0" value={item.harga_beli}
-                          onChange={e => updateItem(idx, 'harga_beli', Number(e.target.value))}
-                          className="w-full px-2 py-1.5 text-xs rounded-lg border outline-none"
-                          style={{ borderColor: '#D5D3CD', color: '#1A1A18', backgroundColor: '#fff' }} />
+                        <RupiahInput
+                          value={item.harga_beli}
+                          onChange={v => updateItem(idx, 'harga_beli', v)}
+                        />
                       </div>
                     </div>
                     <div className="mt-2 text-right text-xs font-semibold" style={{ color: '#3B6D11' }}>

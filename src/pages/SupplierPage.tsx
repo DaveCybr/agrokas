@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useSuppliers, usePurchaseOrders, useGoodsReceipts, useUpdatePOStatus, useSupplierPayments, useSupplierReceipts } from '@/hooks/useSupplier'
+import { useState, useMemo, Fragment } from 'react'
+import { useSuppliers, useAllSuppliers, usePurchaseOrders, useGoodsReceipts, useUpdatePOStatus, useSupplierPayments, useSupplierReceipts } from '@/hooks/useSupplier'
 import { SupplierModal } from '@/components/supplier/SupplierModal'
 import { BayarHutangSupplierModal } from '@/components/supplier/BayarHutangSupplierModal'
 import { BuatPOModal } from '@/components/supplier/BuatPOModal'
@@ -92,9 +92,11 @@ export function SupplierPage() {
   const [terimaModal, setTerimaModal] = useState<{ open: boolean; po?: PurchaseOrder | null }>({ open: false })
 
   const { data: suppliers, isLoading: loadingSuppliers } = useSuppliers()
+  const { data: allSuppliers } = useAllSuppliers()
   const { data: allPOs, isLoading: loadingPOs } = usePurchaseOrders()
   const { data: receipts, isLoading: loadingReceipts } = useGoodsReceipts()
   const updateStatus = useUpdatePOStatus()
+  const [batalError, setBatalError] = useState('')
 
   const filteredSuppliers = useMemo(() => {
     if (!search) return suppliers ?? []
@@ -106,9 +108,10 @@ export function SupplierPage() {
     return (allPOs ?? []).filter(p => p.status === poStatusFilter)
   }, [allPOs, poStatusFilter])
 
+  // Hutang tab pakai semua supplier (termasuk nonaktif) agar hutang tidak hilang
   const debtSuppliers = useMemo(() =>
-    (suppliers ?? []).sort((a, b) => Number(b.saldo_hutang) - Number(a.saldo_hutang)),
-  [suppliers])
+    (allSuppliers ?? []).sort((a, b) => Number(b.saldo_hutang) - Number(a.saldo_hutang)),
+  [allSuppliers])
 
   const totalDebt = useMemo(() =>
     debtSuppliers.reduce((s, sup) => s + Number(sup.saldo_hutang), 0),
@@ -123,7 +126,12 @@ export function SupplierPage() {
 
   async function handleBatalPO(po: PurchaseOrder) {
     if (!confirm(`Batalkan PO ${po.no_po}?`)) return
-    await updateStatus.mutateAsync({ id: po.id, status: 'batal' })
+    try {
+      setBatalError('')
+      await updateStatus.mutateAsync({ id: po.id, status: 'batal' })
+    } catch (err) {
+      setBatalError((err as Error).message)
+    }
   }
 
   return (
@@ -139,7 +147,7 @@ export function SupplierPage() {
       {/* Tabs */}
       <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ backgroundColor: '#F0EEE8' }}>
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => { setTab(t.key); setBatalError('') }}
             className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
             style={tab === t.key
               ? { backgroundColor: '#fff', color: '#1A1A18', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }
@@ -237,6 +245,9 @@ export function SupplierPage() {
             </button>
           </div>
 
+          {batalError && (
+            <p className="text-xs mb-3 px-1" style={{ color: '#DC2626' }}>{batalError}</p>
+          )}
           <div className="card overflow-hidden">
             {loadingPOs ? (
               <div className="flex justify-center py-12"><Spinner /></div>
@@ -390,8 +401,8 @@ export function SupplierPage() {
               </thead>
               <tbody>
                 {debtSuppliers.map(s => (
-                  <>
-                    <tr key={s.id} style={{ borderBottom: expandedHutang === s.id ? 'none' : '1px solid #F0EEE8' }}
+                  <Fragment key={s.id}>
+                    <tr style={{ borderBottom: expandedHutang === s.id ? 'none' : '1px solid #F0EEE8' }}
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F8F8F6')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                       <td className="px-4 py-3">
@@ -425,13 +436,13 @@ export function SupplierPage() {
                       </td>
                     </tr>
                     {expandedHutang === s.id && (
-                      <tr key={`${s.id}-detail`} style={{ borderBottom: '1px solid #F0EEE8' }}>
+                      <tr style={{ borderBottom: '1px solid #F0EEE8' }}>
                         <td colSpan={5} className="px-6 pb-3 pt-1">
                           <SupplierHutangDetail supplier={s} />
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
                 {!debtSuppliers.length && (
                   <tr>

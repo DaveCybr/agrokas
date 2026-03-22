@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Supplier } from '@/types'
 import { useBayarHutangSupplier } from '@/hooks/useSupplier'
 import { formatRupiah } from '@/lib/utils'
+import { RupiahInput } from '@/components/ui/inputs'
 
 interface Props {
   supplier: Supplier
@@ -12,24 +13,24 @@ const METODE = ['Tunai', 'Transfer', 'Giro'] as const
 
 export function BayarHutangSupplierModal({ supplier, onClose }: Props) {
   const bayar = useBayarHutangSupplier()
-  const [jumlah, setJumlah] = useState('')
+  const [jumlah, setJumlah] = useState(0)
   const [metode, setMetode] = useState<'Tunai' | 'Transfer' | 'Giro'>('Transfer')
   const [catatan, setCatatan] = useState('')
   const [error, setError] = useState('')
 
   const saldo = Number(supplier.saldo_hutang)
-  const jml = Number(jumlah.replace(/\D/g, '')) || 0
-  const sisaHutang = Math.max(0, saldo - jml)
+  const sisaHutang = Math.max(0, saldo - jumlah)
 
   function setQuick(v: number) {
-    setJumlah(v === 0 ? String(saldo) : String(v))
+    setJumlah(v === 0 ? saldo : v)
     setError('')
   }
 
   async function handleSubmit() {
-    if (!jml || jml <= 0) { setError('Jumlah bayar harus > 0'); return }
+    if (!jumlah || jumlah <= 0) { setError('Jumlah bayar harus > 0'); return }
+    if (jumlah > saldo) { setError(`Jumlah melebihi saldo hutang (${formatRupiah(saldo)})`); return }
     try {
-      await bayar.mutateAsync({ supplier_id: supplier.id, jumlah: jml, metode, catatan: catatan || undefined })
+      await bayar.mutateAsync({ supplier_id: supplier.id, jumlah, metode, catatan: catatan || undefined })
       onClose()
     } catch (err) {
       setError((err as Error).message)
@@ -68,12 +69,10 @@ export function BayarHutangSupplierModal({ supplier, onClose }: Props) {
                 Lunas
               </button>
             </div>
-            <input
+            <RupiahInput
               value={jumlah}
-              onChange={e => { setJumlah(e.target.value.replace(/\D/g, '')); setError('') }}
+              onChange={v => { setJumlah(v); setError('') }}
               placeholder="0"
-              className="w-full px-3 py-2 text-sm rounded-lg border outline-none"
-              style={{ borderColor: error ? '#DC2626' : '#D5D3CD', color: '#1A1A18', fontVariantNumeric: 'tabular-nums' }}
             />
           </div>
 
@@ -101,7 +100,7 @@ export function BayarHutangSupplierModal({ supplier, onClose }: Props) {
           </div>
 
           {/* Preview sisa */}
-          {jml > 0 && (
+          {jumlah > 0 && (
             <div className="px-4 py-3 rounded-xl" style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E6E0' }}>
               <p className="text-xs" style={{ color: '#9B9890' }}>Sisa hutang setelah bayar</p>
               <p className="text-lg font-bold" style={{ color: sisaHutang > 0 ? '#D97706' : '#3B6D11', fontVariantNumeric: 'tabular-nums' }}>

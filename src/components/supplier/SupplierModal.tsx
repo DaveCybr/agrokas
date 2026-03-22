@@ -71,7 +71,7 @@ export function SupplierModal({ supplier, onClose }: Props) {
           </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-3">
+        <form id="supplier-form" onSubmit={handleSubmit} className="px-6 py-4 space-y-3">
           <div>
             <label className="text-xs font-medium block mb-1" style={{ color: '#6B6963' }}>
               Nama Supplier <span style={{ color: '#DC2626' }}>*</span>
@@ -132,7 +132,7 @@ export function SupplierModal({ supplier, onClose }: Props) {
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg" style={{ backgroundColor: '#F0EEE8', color: '#6B6963' }}>
             Batal
           </button>
-          <button onClick={handleSubmit as any} disabled={isPending}
+          <button type="submit" form="supplier-form" disabled={isPending}
             className="px-4 py-2 text-sm font-medium rounded-lg" style={{ backgroundColor: '#3B6D11', color: '#fff' }}>
             {isPending ? 'Menyimpan...' : isEdit ? 'Simpan' : 'Tambah Supplier'}
           </button>

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { PurchaseOrder } from '@/types'
 import { useUpdatePOStatus } from '@/hooks/useSupplier'
 import { formatRupiah, formatDate } from '@/lib/utils'
@@ -22,14 +23,25 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 export function DetailPOModal({ po, onClose, onTerima }: Props) {
   const updateStatus = useUpdatePOStatus()
   const s = STATUS_STYLE[po.status] ?? STATUS_STYLE.draft
+  const [error, setError] = useState('')
 
   async function handleKirim() {
     if (!confirm(`Ubah status ${po.no_po} menjadi "Dikirim"?`)) return
-    await updateStatus.mutateAsync({ id: po.id, status: 'dikirim' })
+    try {
+      setError('')
+      await updateStatus.mutateAsync({ id: po.id, status: 'dikirim' })
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
   async function handleBatal() {
     if (!confirm(`Batalkan PO ${po.no_po}? Tindakan ini tidak bisa dibatalkan.`)) return
-    await updateStatus.mutateAsync({ id: po.id, status: 'batal' })
+    try {
+      setError('')
+      await updateStatus.mutateAsync({ id: po.id, status: 'batal' })
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   return (
@@ -102,6 +114,11 @@ export function DetailPOModal({ po, onClose, onTerima }: Props) {
           )}
         </div>
 
+        {error && (
+          <div className="px-6 py-2">
+            <p className="text-xs" style={{ color: '#DC2626' }}>{error}</p>
+          </div>
+        )}
         <div className="px-6 py-4 flex justify-between items-center" style={{ borderTop: '1px solid #E8E6E0' }}>
           <div className="flex gap-2">
             {po.status === 'draft' && (

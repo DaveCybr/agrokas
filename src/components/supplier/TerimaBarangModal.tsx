@@ -3,8 +3,10 @@ import type { PurchaseOrder, Product } from '@/types'
 import { useTerimaBarang } from '@/hooks/useSupplier'
 import { useSuppliers } from '@/hooks/useSupplier'
 import { useProducts, useTambahProdukCepat } from '@/hooks/useProducts'
+import { useDebounce } from '@/hooks/useDebounce'
 import { formatRupiah } from '@/lib/utils'
 import { SATUAN_OPTIONS } from '@/lib/constants'
+import { RupiahInput, QtyInput } from '@/components/ui/inputs'
 
 interface GRItemRow {
   product_id: string
@@ -26,9 +28,10 @@ export function TerimaBarangModal({ po, onClose }: Props) {
   const tambahProdukCepat = useTambahProdukCepat()
   const { data: suppliers } = useSuppliers()
   const [productSearch, setProductSearch] = useState('')
-  const { data: products } = useProducts(undefined, productSearch)
+  const debouncedSearch = useDebounce(productSearch, 300)
+  const { data: products } = useProducts(undefined, debouncedSearch)
   const [showProductPicker, setShowProductPicker] = useState<number | null>(null)
-  const [newProdForm, setNewProdForm] = useState<{ idx: number; nama: string; satuan: string } | null>(null)
+  const [newProdForm, setNewProdForm] = useState<{ idx: number; nama: string; satuan: string; hargaBeli: number } | null>(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const [supplierId, setSupplierId] = useState(po?.supplier_id ?? '')
@@ -74,11 +77,10 @@ export function TerimaBarangModal({ po, onClose }: Props) {
   async function handleTambahProdukBaru() {
     if (!newProdForm || !newProdForm.satuan.trim()) return
     try {
-      const hargaBeli = items[newProdForm.idx]?.harga_beli ?? 0
       const prod = await tambahProdukCepat.mutateAsync({
         nama: newProdForm.nama,
         satuan: newProdForm.satuan.trim(),
-        harga_beli: hargaBeli,
+        harga_beli: newProdForm.hargaBeli,
       })
       selectProduct(newProdForm.idx, prod)
     } catch (err) {
@@ -88,6 +90,9 @@ export function TerimaBarangModal({ po, onClose }: Props) {
 
   async function handleSubmit() {
     if (!supplierId) { setError('Pilih supplier'); return }
+    if (po?.tanggal_po && tanggal < po.tanggal_po.slice(0, 10)) {
+      setError(`Tanggal terima tidak boleh sebelum tanggal PO (${po.tanggal_po.slice(0, 10)})`); return
+    }
     if (!items.length) { setError('Tambah minimal 1 item'); return }
     if (items.some(i => !i.nama_produk || i.qty_diterima <= 0 || i.harga_beli <= 0)) {
       setError('Lengkapi semua item'); return
@@ -142,6 +147,7 @@ export function TerimaBarangModal({ po, onClose }: Props) {
             <div>
               <label className="text-xs font-medium block mb-1" style={{ color: '#6B6963' }}>Tanggal Terima</label>
               <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)}
+                min={po?.tanggal_po ? po.tanggal_po.slice(0, 10) : undefined}
                 className="w-full px-3 py-2 text-sm rounded-lg border outline-none" style={{ borderColor: '#D5D3CD', color: '#1A1A18' }} />
             </div>
           </div>
@@ -171,8 +177,10 @@ export function TerimaBarangModal({ po, onClose }: Props) {
             <div className="space-y-2">
               {items.map((item, idx) => (
                 <div key={idx} className="p-3 rounded-xl relative" style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E6E0' }}>
-                  <button onClick={() => removeItem(idx)} className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs"
-                    style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>✕</button>
+                  {!item.po_item_id && (
+                    <button onClick={() => removeItem(idx)} className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                      style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>✕</button>
+                  )}
 
                   <div className="mb-2 relative">
                     {item.po_item_id ? (
@@ -187,8 +195,10 @@ export function TerimaBarangModal({ po, onClose }: Props) {
                           {item.nama_produk || 'Pilih produk...'}
                         </button>
                         {showProductPicker === idx && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg z-10 overflow-hidden"
-                            style={{ border: '1px solid #E5E0D5' }}>
+                          <>
+                          <div className="fixed inset-0" style={{ zIndex: 9 }} onClick={() => { setShowProductPicker(null); setNewProdForm(null) }} />
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg overflow-hidden"
+                            style={{ border: '1px solid #E5E0D5', zIndex: 10 }}>
                             <div className="p-2 border-b" style={{ borderColor: '#E8E6E0' }}>
                               <input autoFocus value={productSearch} onChange={e => { setProductSearch(e.target.value); setNewProdForm(null) }}
                                 placeholder="Cari..." className="w-full px-2 py-1 text-xs outline-none" />
@@ -218,6 +228,13 @@ export function TerimaBarangModal({ po, onClose }: Props) {
                                       <option value="">-- Pilih satuan --</option>
                                       {SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
+                                    <div>
+                                      <p className="text-xs mb-1" style={{ color: '#9B9890' }}>Harga Beli (HPP)</p>
+                                      <RupiahInput
+                                        value={newProdForm.hargaBeli}
+                                        onChange={v => setNewProdForm(f => f ? { ...f, hargaBeli: v } : f)}
+                                      />
+                                    </div>
                                     <div className="flex gap-1.5">
                                       <button onClick={() => setNewProdForm(null)}
                                         className="flex-1 py-1 text-xs rounded-lg" style={{ backgroundColor: '#F0EEE8', color: '#6B6963' }}>
@@ -230,7 +247,7 @@ export function TerimaBarangModal({ po, onClose }: Props) {
                                     </div>
                                   </div>
                                 ) : (
-                                  <button onClick={() => setNewProdForm({ idx, nama: productSearch.trim(), satuan: '' })}
+                                  <button onClick={() => setNewProdForm({ idx, nama: productSearch.trim(), satuan: '', hargaBeli: 0 })}
                                     className="w-full text-left px-3 py-2.5 text-xs font-medium border-t"
                                     style={{ borderColor: '#E8E6E0', color: '#3B6D11', backgroundColor: '#F0F7E8' }}>
                                     + Tambah "{productSearch.trim()}" sebagai produk baru
@@ -239,6 +256,7 @@ export function TerimaBarangModal({ po, onClose }: Props) {
                               )}
                             </div>
                           </div>
+                          </>
                         )}
                       </>
                     )}
@@ -264,29 +282,21 @@ export function TerimaBarangModal({ po, onClose }: Props) {
                           </span>
                         )}
                       </label>
-                      <input
-                        type="number" min="0" step="0.01"
-                        max={item.max_qty}
+                      <QtyInput
                         value={item.qty_diterima}
-                        onChange={e => {
-                          const val = Number(e.target.value)
-                          const clamped = item.max_qty !== undefined ? Math.min(val, item.max_qty) : val
-                          updateItem(idx, 'qty_diterima', clamped)
-                        }}
-                        className="w-full px-2 py-1.5 text-xs rounded-lg border outline-none"
-                        style={{
-                          borderColor: item.max_qty !== undefined && item.qty_diterima > item.max_qty ? '#DC2626' : '#D5D3CD',
-                          color: '#1A1A18', backgroundColor: '#fff',
-                        }}
+                        onChange={v => updateItem(idx, 'qty_diterima', v)}
+                        min={0}
+                        max={item.max_qty}
+                        step={1}
                       />
                     </div>
                     <div>
                       <label className="text-xs mb-1 block" style={{ color: '#9B9890' }}>Harga Beli</label>
-                      <input type="number" min="0" value={item.harga_beli}
-                        onChange={e => updateItem(idx, 'harga_beli', Number(e.target.value))}
+                      <RupiahInput
+                        value={item.harga_beli}
+                        onChange={v => updateItem(idx, 'harga_beli', v)}
                         disabled={!!item.po_item_id}
-                        className="w-full px-2 py-1.5 text-xs rounded-lg border outline-none"
-                        style={{ borderColor: '#D5D3CD', color: '#1A1A18', backgroundColor: item.po_item_id ? '#F0EEE8' : '#fff', cursor: item.po_item_id ? 'not-allowed' : 'default' }} />
+                      />
                     </div>
                   </div>
                   <div className="mt-2 text-right text-xs font-semibold" style={{ color: '#3B6D11' }}>
