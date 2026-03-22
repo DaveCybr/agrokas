@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSettings } from '@/hooks/useSettings'
+import { useUpdateSettings } from '@/hooks/useSettings'
 import { Spinner } from '@/components/ui/Spinner'
 
 function BarcodeIcon() {
@@ -19,14 +20,62 @@ function BarcodeIcon() {
 
 export function PengaturanPage() {
   const { data: settings, isLoading } = useSettings()
+  const update = useUpdateSettings()
+
   const [barcodeEnabled, setBarcodeEnabled] = useState(
     () => localStorage.getItem('agrokas_barcode_enabled') !== 'false'
   )
+
+  const [tokoForm, setTokoForm] = useState({
+    nama_toko: '', alamat: '', telp: '', footer_nota: '',
+  })
+  const [printerForm, setPrinterForm] = useState({
+    printer_name: '', paper_width: 80,
+  })
+  const [tokoMsg, setTokoMsg]       = useState<{ text: string; ok: boolean } | null>(null)
+  const [printerMsg, setPrinterMsg] = useState<{ text: string; ok: boolean } | null>(null)
+
+  useEffect(() => {
+    if (settings) {
+      setTokoForm({
+        nama_toko:   settings.nama_toko ?? '',
+        alamat:      settings.alamat ?? '',
+        telp:        settings.telp ?? '',
+        footer_nota: settings.footer_nota ?? '',
+      })
+      setPrinterForm({
+        printer_name: settings.printer_name ?? '',
+        paper_width:  settings.paper_width ?? 80,
+      })
+    }
+  }, [settings])
 
   function toggleBarcode() {
     const next = !barcodeEnabled
     setBarcodeEnabled(next)
     localStorage.setItem('agrokas_barcode_enabled', String(next))
+  }
+
+  async function handleSimpanToko() {
+    if (!settings) return
+    setTokoMsg(null)
+    try {
+      await update.mutateAsync({ id: settings.id, ...tokoForm })
+      setTokoMsg({ text: 'Perubahan tersimpan', ok: true })
+    } catch (err) {
+      setTokoMsg({ text: (err as Error).message, ok: false })
+    }
+  }
+
+  async function handleSimpanPrinter() {
+    if (!settings) return
+    setPrinterMsg(null)
+    try {
+      await update.mutateAsync({ id: settings.id, ...printerForm })
+      setPrinterMsg({ text: 'Konfigurasi printer tersimpan', ok: true })
+    } catch (err) {
+      setPrinterMsg({ text: (err as Error).message, ok: false })
+    }
   }
 
   if (isLoading) {
@@ -46,24 +95,39 @@ export function PengaturanPage() {
           <h2 className="font-semibold text-sm" style={{ color: '#1A1A18' }}>Informasi Toko</h2>
         </div>
         <div className="space-y-4">
-          {[
-            { label: 'Nama Toko', key: 'nama_toko', value: settings?.nama_toko },
-            { label: 'Alamat', key: 'alamat', value: settings?.alamat },
-            { label: 'Nomor Telepon', key: 'telp', value: settings?.telp },
-            { label: 'Footer Nota', key: 'footer_nota', value: settings?.footer_nota },
-          ].map((f) => (
+          {([
+            { label: 'Nama Toko',    key: 'nama_toko'   },
+            { label: 'Alamat',       key: 'alamat'      },
+            { label: 'Nomor Telepon',key: 'telp'        },
+            { label: 'Footer Nota',  key: 'footer_nota' },
+          ] as { label: string; key: keyof typeof tokoForm }[]).map((f) => (
             <div key={f.key}>
-              <label
-                className="block text-xs font-medium mb-1.5"
-                style={{ color: '#6B6963' }}
-              >
+              <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B6963' }}>
                 {f.label}
               </label>
-              <input className="input" defaultValue={f.value ?? ''} />
+              <input
+                className="input"
+                value={tokoForm[f.key]}
+                onChange={(e) => {
+                  setTokoForm(prev => ({ ...prev, [f.key]: e.target.value }))
+                  setTokoMsg(null)
+                }}
+              />
             </div>
           ))}
+          {tokoMsg && (
+            <p className="text-xs" style={{ color: tokoMsg.ok ? '#3B6D11' : '#DC2626' }}>
+              {tokoMsg.text}
+            </p>
+          )}
           <div className="pt-1">
-            <button className="btn-primary text-sm">Simpan Perubahan</button>
+            <button
+              className="btn-primary text-sm"
+              onClick={handleSimpanToko}
+              disabled={update.isPending}
+            >
+              {update.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+            </button>
           </div>
         </div>
       </div>
@@ -121,7 +185,11 @@ export function PengaturanPage() {
             </label>
             <input
               className="input"
-              defaultValue={settings?.printer_name ?? ''}
+              value={printerForm.printer_name}
+              onChange={(e) => {
+                setPrinterForm(prev => ({ ...prev, printer_name: e.target.value }))
+                setPrinterMsg(null)
+              }}
               placeholder="Kosongkan untuk default printer"
             />
           </div>
@@ -129,7 +197,14 @@ export function PengaturanPage() {
             <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B6963' }}>
               Lebar Kertas
             </label>
-            <select className="input" defaultValue={settings?.paper_width ?? 80}>
+            <select
+              className="input"
+              value={printerForm.paper_width}
+              onChange={(e) => {
+                setPrinterForm(prev => ({ ...prev, paper_width: Number(e.target.value) }))
+                setPrinterMsg(null)
+              }}
+            >
               <option value={58}>58mm</option>
               <option value={80}>80mm</option>
             </select>
@@ -152,8 +227,19 @@ export function PengaturanPage() {
               qz.io/download
             </a>
           </div>
+          {printerMsg && (
+            <p className="text-xs" style={{ color: printerMsg.ok ? '#3B6D11' : '#DC2626' }}>
+              {printerMsg.text}
+            </p>
+          )}
           <div className="pt-1">
-            <button className="btn-primary text-sm">Simpan & Test Print</button>
+            <button
+              className="btn-primary text-sm"
+              onClick={handleSimpanPrinter}
+              disabled={update.isPending}
+            >
+              {update.isPending ? 'Menyimpan...' : 'Simpan & Test Print'}
+            </button>
           </div>
         </div>
       </div>

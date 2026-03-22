@@ -60,6 +60,25 @@ export function CartPanel() {
 
   async function handleBayar() {
     if (items.length === 0 || !cukup) return
+
+    if (metodeBayar === 'Hutang') {
+      if (!customer) {
+        addToast('Pilih pelanggan untuk transaksi hutang', 'error')
+        return
+      }
+      const limit = Number(customer.limit_kredit ?? 0)
+      if (limit > 0) {
+        const sisaLimit = limit - Number(customer.saldo_hutang ?? 0)
+        if (tot > sisaLimit) {
+          addToast(
+            `Hutang melebihi limit kredit ${formatRupiah(limit)}. Sisa limit: ${formatRupiah(Math.max(0, sisaLimit))}`,
+            'error'
+          )
+          return
+        }
+      }
+    }
+
     setPaying(true)
     try {
       const noTrx = generateNoTransaksi()

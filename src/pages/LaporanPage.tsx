@@ -6,7 +6,10 @@ import {
 } from 'recharts'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
-import { useDailySummary, useTopProducts, usePeriodSummary } from '@/hooks/useLaporan'
+import {
+  useDailySummary, useTopProducts, usePeriodSummary,
+  usePembelian, useArusKas, useMarginProduk, useStokFlow, useLabaRugi,
+} from '@/hooks/useLaporan'
 import { exportLaporanHarian, exportProdukTerlaris, exportHutangOutstanding } from '@/lib/exportExcel'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -206,7 +209,7 @@ function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
 }
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
-type Tab = 'dashboard' | 'harian' | 'produk' | 'hutang'
+type Tab = 'dashboard' | 'harian' | 'produk' | 'hutang' | 'pembelian' | 'aruskas' | 'margin' | 'stokflow' | 'labarugi'
 
 // ── Outstanding debt hook ─────────────────────────────────────────────────────
 function useOutstandingDebt() {
@@ -246,6 +249,12 @@ export function LaporanPage() {
   const { data: topProducts, isLoading: loadingTop } = useTopProducts(20)
   const { data: debtData, isLoading: loadingDebt }   = useOutstandingDebt()
 
+  const { data: pembelianData, isLoading: loadingPembelian } = usePembelian(fromStr, toStr)
+  const { data: arusKasData,   isLoading: loadingArusKas }   = useArusKas(fromStr, toStr)
+  const { data: marginData,    isLoading: loadingMargin }    = useMarginProduk()
+  const { data: stokFlowData,  isLoading: loadingStokFlow }  = useStokFlow(fromStr, toStr)
+  const { data: labaRugiData,  isLoading: loadingLabaRugi }  = useLabaRugi(fromStr, toStr)
+
   const current  = usePeriodSummary(fromStr, toStr)
   const previous = usePeriodSummary(prevFrom, prevTo)
 
@@ -282,6 +291,11 @@ export function LaporanPage() {
     { key: 'harian',    label: 'Penjualan Harian' },
     { key: 'produk',    label: 'Produk Terlaris' },
     { key: 'hutang',    label: 'Hutang Outstanding' },
+    { key: 'pembelian', label: 'Pembelian' },
+    { key: 'aruskas',   label: 'Arus Kas' },
+    { key: 'margin',    label: 'Margin Produk' },
+    { key: 'stokflow',  label: 'Stok Flow' },
+    { key: 'labarugi',  label: 'Laba Rugi' },
   ]
 
   const periodeStr = `${fromStr}_${toStr}`
@@ -315,7 +329,7 @@ export function LaporanPage() {
       </div>
 
       {/* Date range — shown for relevant tabs */}
-      {(tab === 'dashboard' || tab === 'harian') && (
+      {(['dashboard', 'harian', 'pembelian', 'aruskas', 'stokflow', 'labarugi'] as Tab[]).includes(tab) && (
         <div className="mb-5">
           <DateRangePicker from={from} to={to} onChange={handleRangeChange} />
         </div>
@@ -653,6 +667,295 @@ export function LaporanPage() {
               </table>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── PEMBELIAN ─────────────────────────────────────────────────── */}
+      {tab === 'pembelian' && (
+        <div>
+          <div className="card overflow-hidden">
+            <div className="px-5 py-3 font-semibold text-sm" style={{ color: '#1A1A18', borderBottom: '1px solid #E8E6E0' }}>
+              Riwayat Pembelian — {formatDate(fromStr)} s/d {formatDate(toStr)}
+            </div>
+            {loadingPembelian ? (
+              <div className="flex justify-center py-12"><Spinner /></div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead style={{ backgroundColor: '#F8F8F6' }}>
+                  <tr>
+                    {['Tanggal', 'No. Terima', 'Supplier', 'Metode', 'Total'].map((h) => (
+                      <th key={h} className="px-5 py-3 text-left" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9B9890' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pembelianData?.map((gr: any) => (
+                    <tr key={gr.id} style={{ borderBottom: '1px solid #F0EEE8' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8F8F6')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      <td className="px-5 py-3" style={{ color: '#1A1A18' }}>{formatDate(gr.tanggal)}</td>
+                      <td className="px-5 py-3 font-mono text-xs" style={{ color: '#6B6963' }}>{gr.no_terima || '—'}</td>
+                      <td className="px-5 py-3" style={{ color: '#6B6963' }}>{gr.suppliers?.nama ?? '—'}</td>
+                      <td className="px-5 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-xs"
+                          style={{ backgroundColor: gr.metode_bayar === 'Hutang' ? '#FEF2F2' : '#EAF3DE', color: gr.metode_bayar === 'Hutang' ? '#DC2626' : '#3B6D11' }}>
+                          {gr.metode_bayar}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 font-semibold" style={{ color: '#1A1A18', fontVariantNumeric: 'tabular-nums' }}>
+                        {formatRupiah(Number(gr.total))}
+                      </td>
+                    </tr>
+                  ))}
+                  {!pembelianData?.length && (
+                    <tr><td colSpan={5} className="px-5 py-12 text-center text-sm" style={{ color: '#9B9890' }}>Belum ada data pembelian pada periode ini</td></tr>
+                  )}
+                  {(pembelianData?.length ?? 0) > 0 && (
+                    <tr style={{ borderTop: '2px solid #E8E6E0', backgroundColor: '#F8F8F6' }}>
+                      <td colSpan={4} className="px-5 py-3 font-semibold text-xs uppercase tracking-wide" style={{ color: '#6B6963' }}>Total</td>
+                      <td className="px-5 py-3 font-bold" style={{ color: '#1A1A18', fontVariantNumeric: 'tabular-nums' }}>
+                        {formatRupiah(pembelianData?.reduce((s: number, r: any) => s + Number(r.total), 0) ?? 0)}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ARUS KAS ──────────────────────────────────────────────────── */}
+      {tab === 'aruskas' && (
+        <div>
+          {loadingArusKas ? (
+            <div className="flex justify-center py-12"><Spinner /></div>
+          ) : (() => {
+            const tunai = (arusKasData?.penjualan ?? []).filter((r: any) => r.metode_bayar !== 'Hutang')
+            const totalTunai = tunai.reduce((s: number, r: any) => s + Number(r.total), 0)
+            const totalBeli  = (arusKasData?.pembelian ?? []).filter((r: any) => r.metode_bayar !== 'Hutang').reduce((s: number, r: any) => s + Number(r.total), 0)
+            const totalBayar = (arusKasData?.pembayaranHutang ?? []).reduce((s: number, r: any) => s + Number(r.jumlah), 0)
+            const kasNet = totalTunai - totalBeli - totalBayar
+            const rows = [
+              ...(arusKasData?.penjualan ?? []).filter((r: any) => r.metode_bayar !== 'Hutang').map((r: any) => ({
+                tanggal: r.created_at?.slice(0, 10),
+                jenis: 'Masuk' as const,
+                ket: `Penjualan (${r.metode_bayar})`,
+                jumlah: Number(r.total),
+              })),
+              ...(arusKasData?.pembelian ?? []).filter((r: any) => r.metode_bayar !== 'Hutang').map((r: any) => ({
+                tanggal: r.tanggal,
+                jenis: 'Keluar' as const,
+                ket: 'Pembelian Tunai',
+                jumlah: -Number(r.total),
+              })),
+              ...(arusKasData?.pembayaranHutang ?? []).map((r: any) => ({
+                tanggal: r.created_at?.slice(0, 10),
+                jenis: 'Keluar' as const,
+                ket: `Bayar Hutang Supplier (${r.metode})`,
+                jumlah: -Number(r.jumlah),
+              })),
+            ].sort((a, b) => (a.tanggal ?? '').localeCompare(b.tanggal ?? ''))
+            return (
+              <>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="card p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#9B9890' }}>Kas Masuk (Penjualan Tunai)</p>
+                    <p className="text-xl font-bold" style={{ color: '#3B6D11', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(totalTunai)}</p>
+                    <p className="text-xs mt-1" style={{ color: '#9B9890' }}>{tunai.length} transaksi</p>
+                  </div>
+                  <div className="card p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#9B9890' }}>Kas Keluar (Beli + Bayar Hutang)</p>
+                    <p className="text-xl font-bold" style={{ color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(totalBeli + totalBayar)}</p>
+                    <p className="text-xs mt-1" style={{ color: '#9B9890' }}>Beli: {formatRupiah(totalBeli)} · Bayar: {formatRupiah(totalBayar)}</p>
+                  </div>
+                  <div className="card p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#9B9890' }}>Kas Bersih</p>
+                    <p className="text-xl font-bold" style={{ color: kasNet >= 0 ? '#0D9488' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(kasNet)}</p>
+                    <p className="text-xs mt-1" style={{ color: '#9B9890' }}>Masuk − Keluar</p>
+                  </div>
+                </div>
+                <div className="card overflow-hidden">
+                  <div className="px-5 py-3 font-semibold text-sm" style={{ color: '#1A1A18', borderBottom: '1px solid #E8E6E0' }}>
+                    Detail Transaksi Kas
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead style={{ backgroundColor: '#F8F8F6' }}>
+                      <tr>
+                        {['Tanggal', 'Jenis', 'Keterangan', 'Jumlah'].map((h) => (
+                          <th key={h} className="px-5 py-3 text-left" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9B9890' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #F0EEE8' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8F8F6')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
+                          <td className="px-5 py-3 text-xs" style={{ color: '#6B6963' }}>{formatDate(row.tanggal)}</td>
+                          <td className="px-5 py-3">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{ backgroundColor: row.jenis === 'Masuk' ? '#EAF3DE' : '#FEF2F2', color: row.jenis === 'Masuk' ? '#3B6D11' : '#DC2626' }}>
+                              {row.jenis}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-xs" style={{ color: '#1A1A18' }}>{row.ket}</td>
+                          <td className="px-5 py-3 font-semibold" style={{ color: row.jumlah >= 0 ? '#3B6D11' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                            {row.jumlah >= 0 ? '+' : '−'}{formatRupiah(Math.abs(row.jumlah))}
+                          </td>
+                        </tr>
+                      ))}
+                      {!rows.length && (
+                        <tr><td colSpan={4} className="px-5 py-12 text-center text-sm" style={{ color: '#9B9890' }}>Belum ada data pada periode ini</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* ── MARGIN PRODUK ─────────────────────────────────────────────── */}
+      {tab === 'margin' && (
+        <div>
+          <div className="card overflow-hidden">
+            <div className="px-5 py-3 font-semibold text-sm" style={{ color: '#1A1A18', borderBottom: '1px solid #E8E6E0' }}>
+              Margin & Profitabilitas Produk (All Time)
+            </div>
+            {loadingMargin ? (
+              <div className="flex justify-center py-12"><Spinner /></div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead style={{ backgroundColor: '#F8F8F6' }}>
+                  <tr>
+                    {['Produk', 'Kategori', 'Qty Terjual', 'Omzet', 'HPP Total', 'Laba Kotor', 'Margin %'].map((h) => (
+                      <th key={h} className="px-5 py-3 text-left" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9B9890' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {marginData?.map((p: any, i: number) => {
+                    const laba  = p.omzet - p.hpp
+                    const marginPct = p.omzet > 0 ? (laba / p.omzet * 100) : 0
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #F0EEE8' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8F8F6')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <td className="px-5 py-3 font-medium" style={{ color: '#1A1A18' }}>{p.nama}</td>
+                        <td className="px-5 py-3 text-xs" style={{ color: '#6B6963' }}>—</td>
+                        <td className="px-5 py-3 text-xs" style={{ color: '#6B6963', fontVariantNumeric: 'tabular-nums' }}>
+                          {Number(p.qty).toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-5 py-3" style={{ color: '#1A1A18', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(p.omzet)}</td>
+                        <td className="px-5 py-3 text-xs" style={{ color: '#6B6963', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(p.hpp)}</td>
+                        <td className="px-5 py-3 font-semibold" style={{ color: laba >= 0 ? '#0D9488' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                          {formatRupiah(laba)}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="font-bold text-xs" style={{ color: marginPct >= 20 ? '#3B6D11' : marginPct >= 10 ? '#D97706' : '#DC2626' }}>
+                            {marginPct.toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {!marginData?.length && (
+                    <tr><td colSpan={7} className="px-5 py-12 text-center text-sm" style={{ color: '#9B9890' }}>Belum ada data produk</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── STOK FLOW ─────────────────────────────────────────────────── */}
+      {tab === 'stokflow' && (
+        <div>
+          <div className="card overflow-hidden">
+            <div className="px-5 py-3 font-semibold text-sm" style={{ color: '#1A1A18', borderBottom: '1px solid #E8E6E0' }}>
+              Pergerakan Stok — {formatDate(fromStr)} s/d {formatDate(toStr)}
+            </div>
+            {loadingStokFlow ? (
+              <div className="flex justify-center py-12"><Spinner /></div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead style={{ backgroundColor: '#F8F8F6' }}>
+                  <tr>
+                    {['Produk', 'Stok Masuk', 'Nilai Masuk', 'Stok Keluar', 'Nilai Keluar', 'Selisih'].map((h) => (
+                      <th key={h} className="px-5 py-3 text-left" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9B9890' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {stokFlowData?.map((row: any, i: number) => {
+                    const selisih = row.masuk_qty - row.keluar_qty
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #F0EEE8' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8F8F6')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <td className="px-5 py-3 font-medium" style={{ color: '#1A1A18' }}>{row.nama}</td>
+                        <td className="px-5 py-3" style={{ color: '#3B6D11', fontVariantNumeric: 'tabular-nums' }}>+{row.masuk_qty.toLocaleString('id-ID')}</td>
+                        <td className="px-5 py-3 text-xs" style={{ color: '#6B6963', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(row.masuk_nilai)}</td>
+                        <td className="px-5 py-3" style={{ color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>−{row.keluar_qty.toLocaleString('id-ID')}</td>
+                        <td className="px-5 py-3 text-xs" style={{ color: '#6B6963', fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(row.keluar_nilai)}</td>
+                        <td className="px-5 py-3 font-semibold" style={{ color: selisih >= 0 ? '#0D9488' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                          {selisih >= 0 ? '+' : ''}{selisih.toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {!stokFlowData?.length && (
+                    <tr><td colSpan={6} className="px-5 py-12 text-center text-sm" style={{ color: '#9B9890' }}>Belum ada data pergerakan stok pada periode ini</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── LABA RUGI ─────────────────────────────────────────────────── */}
+      {tab === 'labarugi' && (
+        <div>
+          {loadingLabaRugi ? (
+            <div className="flex justify-center py-12"><Spinner /></div>
+          ) : (
+            <div className="card p-6 max-w-lg">
+              <p className="text-sm font-semibold mb-5" style={{ color: '#1A1A18' }}>
+                Laporan Laba Rugi — {formatDate(fromStr)} s/d {formatDate(toStr)}
+              </p>
+              {([
+                { label: 'Omzet Penjualan',           value: labaRugiData?.omzet ?? 0,     color: '#3B6D11', bold: false, sep: false },
+                { label: 'Total Diskon',               value: labaRugiData?.diskon ?? 0,    color: '#D97706', bold: false, sep: false, minus: true },
+                { label: 'Penjualan Bersih',           value: (labaRugiData?.omzet ?? 0) - (labaRugiData?.diskon ?? 0), color: '#1A1A18', bold: true, sep: true },
+                { label: 'HPP (Harga Pokok Penjualan)',value: (labaRugiData?.omzet ?? 0) - (labaRugiData?.diskon ?? 0) - (labaRugiData?.labaKotor ?? 0), color: '#DC2626', bold: false, sep: false, minus: true },
+                { label: 'Laba Kotor',                 value: labaRugiData?.labaKotor ?? 0, color: '#0D9488', bold: true, sep: true },
+              ] as { label: string; value: number; color: string; bold: boolean; sep: boolean; minus?: boolean }[]).map((row, i) => (
+                <div key={i}>
+                  {row.sep && <div style={{ borderTop: '1px solid #E8E6E0', margin: '8px 0' }} />}
+                  <div className="flex justify-between items-center py-2">
+                    <span className={`text-sm${row.bold ? ' font-semibold' : ''}`} style={{ color: '#6B6963' }}>{row.label}</span>
+                    <span className={`text-sm${row.bold ? ' font-bold' : ' font-medium'}`} style={{ color: row.color, fontVariantNumeric: 'tabular-nums' }}>
+                      {row.minus ? `−${formatRupiah(row.value)}` : formatRupiah(row.value)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <div style={{ borderTop: '2px solid #1A1A18', marginTop: '8px', paddingTop: '12px' }} className="flex justify-between">
+                <span className="text-xs" style={{ color: '#9B9890' }}>Jumlah Transaksi: {labaRugiData?.transaksi ?? 0}×</span>
+                <span className="text-xs" style={{ color: '#9B9890' }}>Total Pembelian: {formatRupiah(labaRugiData?.totalBeli ?? 0)}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
