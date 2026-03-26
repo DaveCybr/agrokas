@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, type ReactElement } from 'react'
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -93,7 +93,7 @@ interface MetricCardProps {
   diff?: number | null
   color: string
   bgColor: string
-  Icon: () => JSX.Element
+  Icon: () => ReactElement
 }
 function MetricCard({ label, value, diff, color, bgColor, Icon }: MetricCardProps) {
   return (
@@ -245,7 +245,7 @@ export function LaporanPage() {
   const prevTo   = toISO(subtractDays(from, 1))
 
   const { data: dailyData, isLoading: loadingDaily } = useDailySummary(fromStr, toStr)
-  const { data: prevData }                           = useDailySummary(prevFrom, prevTo)
+  useDailySummary(prevFrom, prevTo) // pre-fetch for usePeriodSummary cache
   const { data: topProducts, isLoading: loadingTop } = useTopProducts(20)
   const { data: debtData, isLoading: loadingDebt }   = useOutstandingDebt()
 
