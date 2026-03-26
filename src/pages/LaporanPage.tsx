@@ -301,7 +301,7 @@ export function LaporanPage() {
   const periodeStr = `${fromStr}_${toStr}`
 
   return (
-    <div className="px-8 py-6 h-full overflow-y-auto">
+    <div className="px-4 py-4 md:px-8 md:py-6 h-full overflow-y-auto">
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
@@ -310,22 +310,24 @@ export function LaporanPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ backgroundColor: '#F0EEE8' }}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
-            style={
-              tab === t.key
-                ? { backgroundColor: '#fff', color: '#1A1A18', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }
-                : { color: '#6B6963' }
-            }
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Tabs — scrollable on mobile */}
+      <div className="overflow-x-auto mb-5 -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ backgroundColor: '#F0EEE8' }}>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap"
+              style={
+                tab === t.key
+                  ? { backgroundColor: '#fff', color: '#1A1A18', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }
+                  : { color: '#6B6963' }
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Date range — shown for relevant tabs */}
@@ -339,7 +341,7 @@ export function LaporanPage() {
       {tab === 'dashboard' && (
         <div>
           {/* Metric cards */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
             <MetricCard
               label="Total Omzet"
               value={formatRupiah(current.totalOmzet)}
@@ -378,7 +380,7 @@ export function LaporanPage() {
           {loadingDaily ? (
             <div className="flex justify-center py-16"><Spinner /></div>
           ) : (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Omzet area chart — 2/3 */}
               <div className="col-span-2 card p-5">
                 <p className="text-sm font-semibold mb-4" style={{ color: '#1A1A18' }}>

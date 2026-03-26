@@ -209,7 +209,7 @@ export function TransaksiPage() {
   }
 
   return (
-    <div className="px-8 py-6 h-full overflow-y-auto">
+    <div className="px-4 py-4 md:px-8 md:py-6 h-full overflow-y-auto">
       {/* Header */}
       <div className="mb-5">
         <h1 className="text-lg font-semibold" style={{ color: '#1A1A18' }}>Riwayat Transaksi</h1>

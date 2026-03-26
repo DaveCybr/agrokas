@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { useSidebarStore } from '@/store/sidebarStore'
 
 function CartIcon() {
   return (
@@ -86,18 +87,36 @@ const nav = [
   { to: '/pengaturan', Icon: CogIcon,      label: 'Pengaturan' },
 ]
 
+function XIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  )
+}
+
 export function Sidebar() {
   const { user, signOut } = useAuthStore()
+  const { open, close } = useSidebarStore()
   const initials = user?.email?.[0]?.toUpperCase() ?? 'K'
 
   return (
     <aside
-      className="w-52 h-screen bg-white flex flex-col fixed left-0 top-0 z-30"
+      className={`w-52 h-screen bg-white flex flex-col fixed left-0 top-0 z-30 transition-transform duration-200
+        ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       style={{ borderRight: '1px solid #E8E6E0' }}
     >
       {/* Logo */}
       <div className="px-4 pt-5 pb-4">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 relative">
+          {/* Close button — mobile only */}
+          <button
+            className="md:hidden absolute -right-1 top-0 p-1 rounded-md transition-colors hover:bg-gray-100"
+            style={{ color: '#9B9890' }}
+            onClick={close}
+          >
+            <XIcon />
+          </button>
           <div
             className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: '#3B6D11' }}
@@ -123,6 +142,7 @@ export function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={close}
             className={({ isActive }) =>
               isActive
                 ? 'flex items-center gap-2.5 py-2 pr-3 pl-[10px] rounded-lg text-sm font-semibold border-l-2 transition-all duration-150'

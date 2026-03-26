@@ -130,3 +130,16 @@
     overflow: hidden;
   }
 }
+
+/* ── Responsive utilities ───────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Allow tables inside cards to scroll horizontally on mobile */
+  .card.overflow-hidden {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  /* Reduce card padding on mobile */
+  .card.p-6 { padding: 1rem; }
+  .card.p-5 { padding: 0.875rem; }
+}

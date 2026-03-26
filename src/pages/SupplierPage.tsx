@@ -135,7 +135,7 @@ export function SupplierPage() {
   }
 
   return (
-    <div className="px-8 py-6 h-full overflow-y-auto">
+    <div className="px-4 py-4 md:px-8 md:py-6 h-full overflow-y-auto">
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>

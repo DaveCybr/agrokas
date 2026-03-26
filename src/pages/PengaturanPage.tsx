@@ -83,7 +83,7 @@ export function PengaturanPage() {
   }
 
   return (
-    <div className="px-8 py-6" style={{ maxWidth: '672px' }}>
+    <div className="px-4 py-4 md:px-8 md:py-6" style={{ maxWidth: '672px' }}>
       <div className="mb-6">
         <h1 className="text-lg font-semibold" style={{ color: '#1A1A18' }}>Pengaturan</h1>
         <p className="text-xs mt-0.5" style={{ color: '#9B9890' }}>Konfigurasi toko & printer</p>

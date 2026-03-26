@@ -166,7 +166,7 @@ export function ProductGrid() {
       {/* Grid */}
       <div className="flex-1 overflow-y-auto p-3">
         {isLoading ? (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : products?.length === 0 ? (
@@ -175,7 +175,7 @@ export function ProductGrid() {
             <p className="text-xs mt-1" style={{ color: '#9B9890' }}>Coba kata kunci lain</p>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {products?.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         )}
