@@ -263,6 +263,10 @@ export function useTerimaBarang() {
       qc.invalidateQueries({ queryKey: ["low-stock"] });
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       qc.invalidateQueries({ queryKey: ["suppliers-all"] });
+      qc.invalidateQueries({ queryKey: ["laporan-pembelian"] });
+      qc.invalidateQueries({ queryKey: ["laporan-arus-kas"] });
+      qc.invalidateQueries({ queryKey: ["laporan-stok-flow"] });
+      qc.invalidateQueries({ queryKey: ["laporan-laba-rugi"] });
     },
   });
 }

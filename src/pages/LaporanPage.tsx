@@ -10,7 +10,14 @@ import {
   useDailySummary, useTopProducts, usePeriodSummary,
   usePembelian, useArusKas, useMarginProduk, useStokFlow, useLabaRugi,
 } from '@/hooks/useLaporan'
-import { exportLaporanHarian, exportProdukTerlaris, exportHutangOutstanding } from '@/lib/exportExcel'
+import {
+  exportLaporanHarian, exportProdukTerlaris, exportHutangOutstanding,
+  exportPembelian, exportArusKas, exportMarginProduk, exportStokFlow, exportLabaRugi,
+} from '@/lib/exportExcel'
+import {
+  pdfLaporanHarian, pdfProdukTerlaris, pdfHutangOutstanding,
+  pdfPembelian, pdfArusKas, pdfMarginProduk, pdfStokFlow, pdfLabaRugi,
+} from '@/lib/exportPdf'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
@@ -48,6 +55,34 @@ function ExportIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
     </svg>
+  )
+}
+
+interface ExportBtnsProps {
+  disabled: boolean
+  onExcel: () => void
+  onPdf: () => void
+}
+function ExportBtns({ disabled, onExcel, onPdf }: ExportBtnsProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={onExcel}
+        disabled={disabled}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-40"
+        style={{ backgroundColor: '#EAF3DE', color: '#3B6D11' }}
+      >
+        <ExportIcon /> Excel
+      </button>
+      <button
+        onClick={onPdf}
+        disabled={disabled}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-40"
+        style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}
+      >
+        <ExportIcon /> PDF
+      </button>
+    </div>
   )
 }
 
@@ -432,14 +467,11 @@ export function LaporanPage() {
       {tab === 'harian' && (
         <div>
           <div className="flex justify-end mb-4">
-            <button
-              onClick={() => dailyData && exportLaporanHarian(dailyData, periodeStr)}
+            <ExportBtns
               disabled={!dailyData?.length}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
-              style={{ backgroundColor: '#EAF3DE', color: '#3B6D11' }}
-            >
-              <ExportIcon /> Export Excel
-            </button>
+              onExcel={() => dailyData && exportLaporanHarian(dailyData, periodeStr)}
+              onPdf={() => dailyData && pdfLaporanHarian(dailyData, fromStr, toStr)}
+            />
           </div>
 
           <div className="card overflow-hidden">
@@ -500,14 +532,11 @@ export function LaporanPage() {
       {tab === 'produk' && (
         <div>
           <div className="flex justify-end mb-4">
-            <button
-              onClick={() => topProducts && exportProdukTerlaris(topProducts)}
+            <ExportBtns
               disabled={!topProducts?.length}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium"
-              style={{ backgroundColor: '#EAF3DE', color: '#3B6D11' }}
-            >
-              <ExportIcon /> Export Excel
-            </button>
+              onExcel={() => topProducts && exportProdukTerlaris(topProducts)}
+              onPdf={() => topProducts && pdfProdukTerlaris(topProducts)}
+            />
           </div>
 
           <div className="grid grid-cols-5 gap-4">
@@ -593,14 +622,11 @@ export function LaporanPage() {
                 <p className="text-lg font-bold" style={{ color: '#1A1A18' }}>{debtData?.length ?? 0} pelanggan</p>
               </div>
             </div>
-            <button
-              onClick={() => debtData && exportHutangOutstanding(debtData)}
+            <ExportBtns
               disabled={!debtData?.length}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium"
-              style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}
-            >
-              <ExportIcon /> Export Excel
-            </button>
+              onExcel={() => debtData && exportHutangOutstanding(debtData)}
+              onPdf={() => debtData && pdfHutangOutstanding(debtData)}
+            />
           </div>
 
           <div className="card overflow-hidden">
@@ -675,6 +701,13 @@ export function LaporanPage() {
       {/* ── PEMBELIAN ─────────────────────────────────────────────────── */}
       {tab === 'pembelian' && (
         <div>
+          <div className="flex justify-end mb-4">
+            <ExportBtns
+              disabled={!pembelianData?.length}
+              onExcel={() => pembelianData && exportPembelian(pembelianData, periodeStr)}
+              onPdf={() => pembelianData && pdfPembelian(pembelianData, fromStr, toStr)}
+            />
+          </div>
           <div className="card overflow-hidden">
             <div className="px-5 py-3 font-semibold text-sm" style={{ color: '#1A1A18', borderBottom: '1px solid #E8E6E0' }}>
               Riwayat Pembelian — {formatDate(fromStr)} s/d {formatDate(toStr)}
@@ -761,8 +794,16 @@ export function LaporanPage() {
                 jumlah: -Number(r.jumlah),
               })),
             ].sort((a, b) => (a.tanggal ?? '').localeCompare(b.tanggal ?? ''))
+            const arusKasSummary = { totalTunai, totalKeluar: totalBeli + totalBayar, kasNet }
             return (
               <>
+                <div className="flex justify-end mb-3">
+                  <ExportBtns
+                    disabled={!rows.length}
+                    onExcel={() => exportArusKas(rows, periodeStr)}
+                    onPdf={() => pdfArusKas(rows, fromStr, toStr, arusKasSummary)}
+                  />
+                </div>
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="card p-5">
                     <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#9B9890' }}>Kas Masuk (Penjualan Tunai)</p>
@@ -826,6 +867,13 @@ export function LaporanPage() {
       {/* ── MARGIN PRODUK ─────────────────────────────────────────────── */}
       {tab === 'margin' && (
         <div>
+          <div className="flex justify-end mb-3">
+            <ExportBtns
+              disabled={!marginData?.length}
+              onExcel={() => marginData && exportMarginProduk(marginData)}
+              onPdf={() => marginData && pdfMarginProduk(marginData)}
+            />
+          </div>
           <div className="card overflow-hidden">
             <div className="px-5 py-3 font-semibold text-sm" style={{ color: '#1A1A18', borderBottom: '1px solid #E8E6E0' }}>
               Margin & Profitabilitas Produk (All Time)
@@ -881,6 +929,13 @@ export function LaporanPage() {
       {/* ── STOK FLOW ─────────────────────────────────────────────────── */}
       {tab === 'stokflow' && (
         <div>
+          <div className="flex justify-end mb-3">
+            <ExportBtns
+              disabled={!stokFlowData?.length}
+              onExcel={() => stokFlowData && exportStokFlow(stokFlowData, periodeStr)}
+              onPdf={() => stokFlowData && pdfStokFlow(stokFlowData, fromStr, toStr)}
+            />
+          </div>
           <div className="card overflow-hidden">
             <div className="px-5 py-3 font-semibold text-sm" style={{ color: '#1A1A18', borderBottom: '1px solid #E8E6E0' }}>
               Pergerakan Stok — {formatDate(fromStr)} s/d {formatDate(toStr)}
@@ -928,6 +983,13 @@ export function LaporanPage() {
       {/* ── LABA RUGI ─────────────────────────────────────────────────── */}
       {tab === 'labarugi' && (
         <div>
+          <div className="flex justify-end mb-3">
+            <ExportBtns
+              disabled={!labaRugiData}
+              onExcel={() => labaRugiData && exportLabaRugi(labaRugiData, periodeStr)}
+              onPdf={() => labaRugiData && pdfLabaRugi(labaRugiData, fromStr, toStr)}
+            />
+          </div>
           {loadingLabaRugi ? (
             <div className="flex justify-center py-12"><Spinner /></div>
           ) : (

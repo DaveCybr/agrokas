@@ -118,6 +118,12 @@ export function CartPanel() {
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['customers'] })
       qc.invalidateQueries({ queryKey: ['low-stock'] })
+      qc.invalidateQueries({ queryKey: ['daily-summary'] })
+      qc.invalidateQueries({ queryKey: ['top-products'] })
+      qc.invalidateQueries({ queryKey: ['laporan-arus-kas'] })
+      qc.invalidateQueries({ queryKey: ['laporan-margin-produk'] })
+      qc.invalidateQueries({ queryKey: ['laporan-stok-flow'] })
+      qc.invalidateQueries({ queryKey: ['laporan-laba-rugi'] })
 
       const printPayload = {
         namaToko: settings?.nama_toko ?? 'Toko Tani',
